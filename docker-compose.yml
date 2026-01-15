@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: psql
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dbnet
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-container
+    restart: always
+    networks:
+      - dbnet
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    image: web-image
+    container_name: web-container
+    restart: always
+    command: >
+      sh -c "celery -A celery_app worker --loglevel=info &
+      python main.py"
+    env_file:
+      - .env
+    ports: 
+      - "7999:7999"
+    volumes:
+      - .:/app
+    networks:
+      - dbnet
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres_data:
+
+networks:
+  dbnet:
+    driver: bridge
